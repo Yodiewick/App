@@ -1,1385 +1,175 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
-<meta name="apple-mobile-web-app-capable" content="yes" />
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-<meta name="apple-mobile-web-app-title" content="Clock" />
-<meta name="format-detection" content="telephone=no" />
-<meta name="theme-color" content="#08070b" />
-<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' rx='40' fill='%23120f18'/%3E%3Ccircle cx='90' cy='90' r='60' stroke='%23fbbf24' stroke-width='6' fill='none'/%3E%3Cline x1='90' y1='90' x2='90' y2='55' stroke='%23fbbf24' stroke-width='6' stroke-linecap='round'/%3E%3Cline x1='90' y1='90' x2='118' y2='90' stroke='%23fbbf24' stroke-width='6' stroke-linecap='round'/%3E%3C/svg%3E" />
-<title>Clock</title>
-<style>
-  :root {
-    /* Theme variables — updated live by JS */
-    --bg: #08070b;
-    --bg-2: #17131f;
-    --glow-1: rgba(251,191,36,0.045);
-    --glow-2: rgba(167,139,250,0.05);
-    --text: #f5f3f8;
-    --text-2: #c8c3d4;
-    --muted: #8a8298;
-    --dim: #4a4454;
-    --accent: #fbbf24;
-    --border-2: rgba(255,255,255,0.12);
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#000000">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="mobile-web-app-capable" content="yes">
+  <title>Clock</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --fg: #fff;
+      --bg: #000;
+    }
 
-    /* Customizable clock variables */
-    --clock-size: 1;
-    --clock-weight: 700;
-    --clock-spacing: -0.045em;
-    --clock-accent: var(--accent);
-  }
-  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    * { box-sizing: border-box; }
 
-  html {
-    height: 100%;
-    -webkit-text-size-adjust: 100%;
-    text-size-adjust: 100%;
-  }
+    html, body {
+      margin: 0;
+      height: 100%;
+      background: var(--bg);
+      /* Prevent iOS text-size inflation and rubber-band scrolling */
+      -webkit-text-size-adjust: 100%;
+      overscroll-behavior: none;
+    }
 
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", Roboto, system-ui, sans-serif;
-    background: var(--bg);
-    background-image:
-      radial-gradient(1400px 1000px at 50% -30%, var(--bg-2) 0%, var(--bg) 55%),
-      radial-gradient(900px 700px at 100% 110%, var(--glow-1) 0%, transparent 65%),
-      radial-gradient(700px 500px at -10% 100%, var(--glow-2) 0%, transparent 65%);
-    background-attachment: fixed;
-    color: var(--text);
-    min-height: 100vh;
-    min-height: 100dvh;
-    overscroll-behavior: none;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding-top: calc(20px + env(safe-area-inset-top, 0px));
-    padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
-    padding-left: calc(20px + env(safe-area-inset-left, 0px));
-    padding-right: calc(20px + env(safe-area-inset-right, 0px));
-    overflow-x: hidden;
-    user-select: none;
-    -webkit-user-select: none;
-    position: relative;
-    transition: background-color 0.4s ease;
-  }
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: clamp(0.5rem, 2vmin, 1.5rem);
+      /* Respect iPhone notch / home indicator safe areas */
+      padding: env(safe-area-inset-top) env(safe-area-inset-right)
+               env(safe-area-inset-bottom) env(safe-area-inset-left);
+      font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo,
+                   Consolas, "Liberation Mono", monospace;
+      color: var(--fg);
+      /* Block accidental text selection / long-press callouts */
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
+      /* Let users tap to toggle format without 300ms delay */
+      touch-action: manipulation;
+    }
 
-  body::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    pointer-events: none;
-    background: radial-gradient(ellipse at 50% 50%, transparent 40%, rgba(0,0,0,0.55) 100%);
-    z-index: 0;
-  }
+    #clock {
+      font-size: clamp(3rem, 18vmin, 16rem);
+      font-weight: 300;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.03em;
+      /* Keep it from ever overflowing horizontally on narrow screens */
+      max-width: 100vw;
+      white-space: nowrap;
+    }
 
-  .halo {
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    width: 140vmin;
-    height: 140vmin;
-    transform: translate(-50%, -50%);
-    pointer-events: none;
-    background: radial-gradient(circle, var(--glow-1) 0%, transparent 65%);
-    z-index: 0;
-    animation: haloBreathe 8s ease-in-out infinite;
-  }
-  @keyframes haloBreathe {
-    0%,100% { opacity: 0.85; transform: translate(-50%, -50%) scale(1); }
-    50%     { opacity: 1;    transform: translate(-50%, -50%) scale(1.06); }
-  }
+    #clock .seconds {
+      /* Dimmer seconds so the hour/minute dominate visually */
+      opacity: 0.55;
+    }
 
-  /* ============ SETTINGS BUTTON ============ */
-  .settings-btn {
-    position: fixed;
-    top: calc(16px + env(safe-area-inset-top, 0px));
-    right: calc(16px + env(safe-area-inset-right, 0px));
-    width: 34px;
-    height: 34px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: rgba(255,255,255,0.035);
-    border: 1px solid rgba(255,255,255,0.07);
-    border-radius: 50%;
-    color: var(--muted);
-    cursor: pointer;
-    z-index: 20;
-    transition: background 0.2s ease, color 0.2s ease, transform 0.12s ease, opacity 0.25s ease;
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    opacity: 0.5;
-    padding: 0;
-  }
-  .settings-btn:hover { opacity: 1; }
-  .settings-btn:active { transform: scale(0.9); }
-  .settings-btn svg { display: block; width: 15px; height: 15px; }
+    #clock .meridiem {
+      font-size: 0.28em;
+      opacity: 0.7;
+      margin-left: 0.15em;
+      letter-spacing: 0.08em;
+    }
 
-  /* ============ CLOCK ============ */
-  .clock {
-    position: relative;
-    z-index: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    text-align: center;
-    padding: 0 4px;
-    width: 100%;
-    max-width: 720px;
-  }
+    #date {
+      font-size: clamp(0.75rem, 2.2vmin, 1.25rem);
+      opacity: 0.55;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
 
-  .eyebrow {
-    font-size: 0.68rem;
-    font-weight: 700;
-    letter-spacing: 0.42em;
-    text-transform: uppercase;
-    color: var(--clock-accent);
-    opacity: 0.75;
-    margin-bottom: 20px;
-    padding-left: 0.42em;
-    transition: opacity 0.3s ease, color 0.3s ease;
-  }
-  .eyebrow.hidden { display: none; }
-
-  .time-row {
-    display: flex;
-    align-items: baseline;
-    justify-content: center;
-    gap: 0.02em;
-    line-height: 0.95;
-    letter-spacing: var(--clock-spacing);
-    font-variant-numeric: tabular-nums;
-    font-feature-settings: "tnum" 1, "ss01" 1;
-  }
-  .time-main {
-    font-size: calc(clamp(4rem, 21vw, 10.5rem) * var(--clock-size));
-    font-weight: var(--clock-weight);
-    background: linear-gradient(180deg, #ffffff 0%, #d8d3e2 55%, #8f8a9c 100%);
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
-    filter: drop-shadow(0 4px 24px rgba(0,0,0,0.5));
-    transition: font-size 0.3s ease;
-  }
-  .colon {
-    font-size: calc(clamp(3.4rem, 17vw, 8.5rem) * var(--clock-size));
-    font-weight: 300;
-    color: var(--muted);
-    opacity: 0.55;
-    transform: translateY(-0.06em);
-    animation: colonBlink 2s steps(1,end) infinite;
-    -webkit-text-fill-color: var(--muted);
-    transition: font-size 0.3s ease;
-  }
-  @keyframes colonBlink {
-    0%, 49%   { opacity: 0.55; }
-    50%, 100% { opacity: 0.2; }
-  }
-  .colon.no-blink { animation: none; opacity: 0.5; }
-
-  .time-seconds-wrap {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    margin-left: 0.18em;
-    transform: translateY(-0.05em);
-  }
-  .time-seconds-wrap.hidden { display: none; }
-  .time-seconds {
-    font-size: calc(clamp(1rem, 4vw, 1.8rem) * var(--clock-size));
-    font-weight: 700;
-    color: var(--clock-accent);
-    letter-spacing: -0.02em;
-    font-variant-numeric: tabular-nums;
-    transition: font-size 0.3s ease, color 0.3s ease;
-  }
-  .seconds-dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: var(--clock-accent);
-    margin-top: 6px;
-    margin-left: 2px;
-    box-shadow: 0 0 10px var(--clock-accent);
-    transition: opacity 0.2s ease, background 0.3s ease;
-  }
-
-  .meridiem {
-    font-size: 0.72rem;
-    font-weight: 800;
-    letter-spacing: 0.24em;
-    color: var(--muted);
-    text-transform: uppercase;
-    margin-left: 0.6em;
-    padding-bottom: 0.4em;
-    align-self: flex-end;
-    transform: translateY(-0.35em);
-    transition: opacity 0.3s ease;
-  }
-  .meridiem.hidden { display: none; }
-
-  .date {
-    margin-top: 30px;
-    font-size: clamp(0.82rem, 2.4vw, 0.98rem);
-    font-weight: 600;
-    color: var(--text-2);
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    opacity: 0.85;
-    padding-left: 0.14em;
-    transition: opacity 0.3s ease;
-  }
-  .date.hidden { display: none; }
-
-  .divider {
-    width: 60px;
-    height: 1px;
-    margin: 22px auto 0;
-    background: linear-gradient(90deg, transparent, var(--clock-accent), transparent);
-    opacity: 0.5;
-    transition: opacity 0.3s ease;
-  }
-  .divider.hidden { display: none; }
-
-  .label {
-    margin-top: 16px;
-    font-size: 0.62rem;
-    font-weight: 700;
-    letter-spacing: 0.36em;
-    text-transform: uppercase;
-    color: var(--dim);
-    padding-left: 0.36em;
-    transition: opacity 0.3s ease;
-  }
-  .label.hidden { display: none; }
-
-  /* Weather */
-  .weather-line {
-    margin-top: 22px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    font-size: 0.72rem;
-    color: var(--muted);
-    font-weight: 600;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    padding-left: 0.14em;
-    cursor: pointer;
-    transition: color 0.2s ease, opacity 0.3s ease;
-    min-height: 18px;
-  }
-  .weather-line.hidden { display: none; }
-  .weather-line:hover { color: var(--text-2); }
-  .weather-line:active { opacity: 0.7; }
-  .weather-line .w-icon { font-size: 0.82rem; line-height: 1; opacity: 0.85; }
-  .weather-line .w-temp { color: var(--text-2); font-weight: 700; font-variant-numeric: tabular-nums; }
-  .weather-line .w-sep { width: 3px; height: 3px; border-radius: 50%; background: var(--dim); flex-shrink: 0; }
-  .weather-line .w-cond { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 40vw; }
-  .weather-line.loading { opacity: 0.4; }
-  .weather-line.error { color: #f87171; text-transform: none; letter-spacing: 0.02em; font-size: 0.68rem; }
-  .weather-line.error .w-retry { color: var(--accent); text-decoration: underline; text-underline-offset: 3px; margin-left: 4px; }
-
-  /* ============ SETTINGS SHEET ============ */
-  .sheet-backdrop {
-    position: fixed;
-    inset: 0;
-    background: rgba(6,5,9,0.72);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.28s ease;
-    z-index: 50;
-  }
-  .sheet-backdrop.show { opacity: 1; pointer-events: auto; }
-
-  .sheet {
-    position: fixed;
-    left: 0; right: 0;
-    bottom: 0;
-    max-width: 500px;
-    margin: 0 auto;
-    background: #15121c;
-    border: 1px solid rgba(255,255,255,0.1);
-    border-bottom: none;
-    border-top-left-radius: 26px;
-    border-top-right-radius: 26px;
-    padding: 10px 22px calc(26px + env(safe-area-inset-bottom, 0px));
-    transform: translateY(100%);
-    transition: transform 0.34s cubic-bezier(0.22, 1, 0.36, 1);
-    z-index: 51;
-    box-shadow: 0 -20px 60px rgba(0,0,0,0.6);
-    max-height: 82vh;
-    overflow-y: auto;
-    overscroll-behavior: contain;
-    -webkit-overflow-scrolling: touch;
-  }
-  .sheet.show { transform: translateY(0); }
-  .sheet-handle {
-    width: 40px; height: 4px;
-    border-radius: 999px;
-    background: rgba(255,255,255,0.12);
-    margin: 0 auto 20px;
-  }
-
-  .sheet-title {
-    font-size: 1.05rem;
-    font-weight: 700;
-    letter-spacing: -0.015em;
-    margin-bottom: 6px;
-    text-align: center;
-  }
-  .sheet-sub {
-    font-size: 0.72rem;
-    color: var(--muted);
-    text-align: center;
-    margin-bottom: 22px;
-    letter-spacing: 0.04em;
-    font-weight: 500;
-  }
-
-  .settings-group {
-    margin-bottom: 22px;
-  }
-  .settings-group:last-of-type { margin-bottom: 12px; }
-  .settings-label {
-    font-size: 0.6rem;
-    font-weight: 700;
-    letter-spacing: 0.16em;
-    text-transform: uppercase;
-    color: var(--muted);
-    margin-bottom: 10px;
-    padding-left: 4px;
-  }
-
-  /* Theme swatches */
-  .theme-grid {
-    display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    gap: 10px;
-  }
-  .theme-swatch {
-    aspect-ratio: 1;
-    border-radius: 14px;
-    cursor: pointer;
-    position: relative;
-    border: 1.5px solid transparent;
-    transition: transform 0.12s ease, border-color 0.2s ease;
-    overflow: hidden;
-    padding: 0;
-  }
-  .theme-swatch:active { transform: scale(0.92); }
-  .theme-swatch.active {
-    border-color: var(--accent);
-    box-shadow: 0 0 0 2px rgba(255,255,255,0.06);
-  }
-  .theme-swatch .swatch-dot {
-    position: absolute;
-    bottom: 6px;
-    right: 6px;
-    width: 9px;
-    height: 9px;
-    border-radius: 50%;
-    box-shadow: 0 0 0 1.5px rgba(0,0,0,0.3);
-  }
-  .theme-swatch .swatch-time {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.7rem;
-    font-weight: 700;
-    letter-spacing: -0.02em;
-    font-variant-numeric: tabular-nums;
-  }
-
-  /* Segmented control */
-  .segmented {
-    display: flex;
-    background: rgba(255,255,255,0.04);
-    border: 1px solid rgba(255,255,255,0.07);
-    border-radius: 12px;
-    padding: 3px;
-    gap: 3px;
-  }
-  .segmented button {
-    flex: 1;
-    padding: 10px 8px;
-    background: transparent;
-    border: none;
-    border-radius: 9px;
-    color: var(--muted);
-    font-family: inherit;
-    font-size: 0.78rem;
-    font-weight: 700;
-    cursor: pointer;
-    transition: background 0.18s ease, color 0.18s ease;
-    letter-spacing: 0.02em;
-  }
-  .segmented button:active { transform: scale(0.97); }
-  .segmented button.active {
-    background: rgba(255,255,255,0.09);
-    color: var(--text);
-  }
-
-  /* Toggle rows */
-  .toggle-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 12px 4px;
-    border-bottom: 1px solid rgba(255,255,255,0.05);
-  }
-  .toggle-row:last-child { border-bottom: none; }
-  .toggle-label {
-    font-size: 0.85rem;
-    font-weight: 600;
-    color: var(--text);
-    letter-spacing: -0.005em;
-  }
-  .toggle-switch {
-    width: 44px;
-    height: 26px;
-    border-radius: 999px;
-    background: rgba(255,255,255,0.1);
-    position: relative;
-    cursor: pointer;
-    border: none;
-    padding: 0;
-    transition: background 0.24s ease;
-    flex-shrink: 0;
-  }
-  .toggle-switch::after {
-    content: '';
-    position: absolute;
-    top: 3px;
-    left: 3px;
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    background: #ffffff;
-    transition: transform 0.24s cubic-bezier(0.22, 1, 0.36, 1);
-    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-  }
-  .toggle-switch.on {
-    background: var(--accent);
-  }
-  .toggle-switch.on::after {
-    transform: translateX(18px);
-  }
-
-  /* Slider */
-  .slider-wrap {
-    padding: 6px 4px 14px;
-  }
-  .slider-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 10px;
-  }
-  .slider-label {
-    font-size: 0.85rem;
-    font-weight: 600;
-    color: var(--text);
-    letter-spacing: -0.005em;
-  }
-  .slider-value {
-    font-size: 0.72rem;
-    color: var(--muted);
-    font-weight: 700;
-    font-variant-numeric: tabular-nums;
-    letter-spacing: 0.04em;
-  }
-  .slider {
-    width: 100%;
-    -webkit-appearance: none;
-    appearance: none;
-    height: 6px;
-    background: rgba(255,255,255,0.08);
-    border-radius: 999px;
-    outline: none;
-  }
-  .slider::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    appearance: none;
-    width: 22px;
-    height: 22px;
-    border-radius: 50%;
-    background: var(--accent);
-    cursor: pointer;
-    border: 3px solid #15121c;
-    box-shadow: 0 0 0 1px var(--accent), 0 2px 8px rgba(0,0,0,0.4);
-  }
-  .slider::-moz-range-thumb {
-    width: 22px;
-    height: 22px;
-    border-radius: 50%;
-    background: var(--accent);
-    cursor: pointer;
-    border: 3px solid #15121c;
-    box-shadow: 0 0 0 1px var(--accent);
-  }
-
-  /* Reset */
-  .reset-btn {
-    width: 100%;
-    padding: 14px;
-    background: transparent;
-    border: 1px solid rgba(255,255,255,0.09);
-    border-radius: 12px;
-    color: var(--muted);
-    font-family: inherit;
-    font-size: 0.82rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: background 0.15s ease;
-    margin-top: 6px;
-  }
-  .reset-btn:active { background: rgba(255,255,255,0.04); }
-
-  /* Watermark */
-  .watermark {
-    position: fixed;
-    bottom: calc(18px + env(safe-area-inset-bottom, 0px));
-    left: 50%;
-    transform: translateX(-50%);
-    font-size: 0.55rem;
-    color: var(--dim);
-    letter-spacing: 0.24em;
-    text-transform: uppercase;
-    font-weight: 600;
-    opacity: 0.55;
-    z-index: 1;
-  }
-  .watermark span { color: var(--muted); font-weight: 700; }
-
-  /* Toast */
-  .toast {
-    position: fixed;
-    left: 50%;
-    bottom: calc(30px + env(safe-area-inset-bottom, 0px));
-    transform: translate(-50%, 20px);
-    background: rgba(20,17,28,0.95);
-    border: 1px solid rgba(255,255,255,0.12);
-    color: var(--text);
-    padding: 11px 18px;
-    border-radius: 999px;
-    font-size: 0.78rem;
-    font-weight: 600;
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.26s ease, transform 0.26s cubic-bezier(0.22, 1, 0.36, 1);
-    z-index: 100;
-    max-width: calc(100vw - 40px);
-    text-align: center;
-  }
-  .toast.show { opacity: 1; transform: translate(-50%, 0); }
-
-  @media (max-height: 600px) and (orientation: landscape) {
-    .eyebrow { margin-bottom: 8px; font-size: 0.6rem; }
-    .date { margin-top: 14px; }
-    .divider { margin-top: 12px; }
-    .label { margin-top: 8px; }
-    .weather-line { margin-top: 10px; font-size: 0.65rem; }
-    .time-main { font-size: calc(clamp(2.8rem, 15vh, 5.5rem) * var(--clock-size)); }
-    .colon { font-size: calc(clamp(2.2rem, 12vh, 4.4rem) * var(--clock-size)); }
-    .time-seconds { font-size: calc(clamp(0.85rem, 3.2vh, 1.3rem) * var(--clock-size)); }
-  }
-</style>
+    /* Respect users who prefer reduced motion */
+    @media (prefers-reduced-motion: reduce) {
+      * { transition: none !important; animation: none !important; }
+    }
+  </style>
 </head>
 <body>
+  <div id="clock" role="timer" aria-live="off">--:--:--</div>
+  <div id="date"></div>
 
-<button class="settings-btn" id="settingsBtn" aria-label="Customize">
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <circle cx="12" cy="12" r="3"/>
-    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-  </svg>
-</button>
+  <script>
+    (function () {
+      'use strict';
 
-<div class="halo"></div>
+      const clockEl = document.getElementById('clock');
+      const dateEl  = document.getElementById('date');
 
-<div class="clock">
-  <div class="eyebrow" id="eyebrow">Local Time</div>
-
-  <div class="time-row">
-    <span class="time-main" id="timeMain">--:--</span>
-    <span class="colon" id="colon">:</span>
-    <div class="time-seconds-wrap" id="secondsWrap">
-      <span class="time-seconds" id="timeSeconds">00</span>
-      <span class="seconds-dot" id="secondsDot"></span>
-    </div>
-    <span class="meridiem" id="meridiem"></span>
-  </div>
-
-  <div class="date" id="date">—</div>
-
-  <div class="divider" id="divider"></div>
-  <div class="label" id="label">—</div>
-
-  <div class="weather-line loading" id="weatherLine">
-    <span class="w-icon">☁️</span>
-    <span class="w-temp">—</span>
-    <span class="w-sep"></span>
-    <span class="w-cond">Loading</span>
-  </div>
-</div>
-
-<div class="sheet-backdrop" id="sheetBackdrop"></div>
-<div class="sheet" id="settingsSheet">
-  <div class="sheet-handle"></div>
-  <div class="sheet-title">Customize</div>
-  <div class="sheet-sub">Personalize your clock</div>
-
-  <!-- THEME -->
-  <div class="settings-group">
-    <div class="settings-label">Theme</div>
-    <div class="theme-grid" id="themeGrid"></div>
-  </div>
-
-  <!-- TIME FORMAT -->
-  <div class="settings-group">
-    <div class="settings-label">Time Format</div>
-    <div class="segmented" id="formatSeg">
-      <button data-value="12">12-hour</button>
-      <button data-value="24">24-hour</button>
-    </div>
-  </div>
-
-  <!-- SIZE -->
-  <div class="settings-group">
-    <div class="slider-wrap">
-      <div class="slider-header">
-        <div class="slider-label">Size</div>
-        <div class="slider-value" id="sizeValue">100%</div>
-      </div>
-      <input type="range" class="slider" id="sizeSlider" min="70" max="140" step="5" value="100" />
-    </div>
-  </div>
-
-  <!-- WEIGHT -->
-  <div class="settings-group">
-    <div class="settings-label">Weight</div>
-    <div class="segmented" id="weightSeg">
-      <button data-value="300">Light</button>
-      <button data-value="500">Regular</button>
-      <button data-value="700">Bold</button>
-      <button data-value="900">Heavy</button>
-    </div>
-  </div>
-
-  <!-- SPACING -->
-  <div class="settings-group">
-    <div class="slider-wrap">
-      <div class="slider-header">
-        <div class="slider-label">Letter Spacing</div>
-        <div class="slider-value" id="spacingValue">Tight</div>
-      </div>
-      <input type="range" class="slider" id="spacingSlider" min="-6" max="4" step="1" value="-4" />
-    </div>
-  </div>
-
-  <!-- DISPLAY TOGGLES -->
-  <div class="settings-group">
-    <div class="settings-label">Display</div>
-    <div class="toggle-row">
-      <div class="toggle-label">Seconds</div>
-      <button class="toggle-switch" id="toggleSeconds" aria-label="Toggle seconds"></button>
-    </div>
-    <div class="toggle-row">
-      <div class="toggle-label">Blinking colon</div>
-      <button class="toggle-switch" id="toggleBlink" aria-label="Toggle blinking colon"></button>
-    </div>
-    <div class="toggle-row">
-      <div class="toggle-label">AM / PM</div>
-      <button class="toggle-switch" id="toggleMeridiem" aria-label="Toggle AM/PM"></button>
-    </div>
-    <div class="toggle-row">
-      <div class="toggle-label">Date</div>
-      <button class="toggle-switch" id="toggleDate" aria-label="Toggle date"></button>
-    </div>
-    <div class="toggle-row">
-      <div class="toggle-label">Greeting</div>
-      <button class="toggle-switch" id="toggleGreeting" aria-label="Toggle greeting"></button>
-    </div>
-    <div class="toggle-row">
-      <div class="toggle-label">Divider</div>
-      <button class="toggle-switch" id="toggleDivider" aria-label="Toggle divider"></button>
-    </div>
-    <div class="toggle-row">
-      <div class="toggle-label">Weather</div>
-      <button class="toggle-switch" id="toggleWeather" aria-label="Toggle weather"></button>
-    </div>
-  </div>
-
-  <button class="reset-btn" id="resetBtn">Reset to defaults</button>
-</div>
-
-<div class="watermark">Made by <span>Leif</span></div>
-<div class="toast" id="toast"></div>
-
-<script>
-/* ============================================================
-   THEMES
-   ============================================================ */
-const THEMES = {
-  midnight: {
-    name: 'Midnight',
-    bg: '#08070b', bg2: '#17131f',
-    glow1: 'rgba(251,191,36,0.045)', glow2: 'rgba(167,139,250,0.05)',
-    text: '#f5f3f8', text2: '#c8c3d4',
-    muted: '#8a8298', dim: '#4a4454',
-    accent: '#fbbf24'
-  },
-  dawn: {
-    name: 'Dawn',
-    bg: '#150d10', bg2: '#2b1a1c',
-    glow1: 'rgba(251,146,60,0.06)', glow2: 'rgba(244,114,182,0.05)',
-    text: '#fff4ee', text2: '#e0c8bc',
-    muted: '#a08678', dim: '#5c4238',
-    accent: '#fb923c'
-  },
-  ocean: {
-    name: 'Ocean',
-    bg: '#060f18', bg2: '#0f2233',
-    glow1: 'rgba(96,165,250,0.055)', glow2: 'rgba(45,212,191,0.05)',
-    text: '#eef6ff', text2: '#b8cadb',
-    muted: '#788ba0', dim: '#3a4a5a',
-    accent: '#60a5fa'
-  },
-  forest: {
-    name: 'Forest',
-    bg: '#07100c', bg2: '#122018',
-    glow1: 'rgba(52,211,153,0.055)', glow2: 'rgba(132,204,22,0.05)',
-    text: '#eef8f2', text2: '#b8d0c0',
-    muted: '#7a9585', dim: '#3a4a40',
-    accent: '#34d399'
-  },
-  ember: {
-    name: 'Ember',
-    bg: '#0d0606', bg2: '#241010',
-    glow1: 'rgba(248,113,113,0.055)', glow2: 'rgba(251,191,36,0.04)',
-    text: '#fff0ee', text2: '#ddb8b8',
-    muted: '#a07878', dim: '#4a3030',
-    accent: '#f87171'
-  }
-};
-
-/* ============================================================
-   DEFAULT SETTINGS
-   ============================================================ */
-const DEFAULTS = {
-  theme: 'midnight',
-  format: 12,
-  size: 100,
-  weight: 700,
-  spacing: -4,
-  showSeconds: true,
-  blink: true,
-  showMeridiem: true,
-  showDate: true,
-  showGreeting: true,
-  showDivider: true,
-  showWeather: true,
-  // weather-specific (kept from before)
-  weatherUnit: 'c',
-  weatherLat: null,
-  weatherLon: null,
-  weatherName: null
-};
-
-const STORAGE_KEY = 'clockSettings.v2';
-let settings = { ...DEFAULTS };
-
-/* ============================================================
-   STORAGE
-   ============================================================ */
-function loadSettings() {
-  try {
-    const raw = JSON.parse(localStorage.getItem(STORAGE_KEY));
-    if (raw && typeof raw === 'object') {
-      // Also carry over legacy weather location if present
+      // Persist user preference (12h vs 24h) across reloads.
+      // Default: 24h. Tap/click the clock to toggle.
+      const STORAGE_KEY = 'clock.use12h';
+      let use12h = false;
       try {
-        const legacy = JSON.parse(localStorage.getItem('clockWeatherLocation'));
-        if (legacy && legacy.lat) {
-          raw.weatherLat = raw.weatherLat || legacy.lat;
-          raw.weatherLon = raw.weatherLon || legacy.lon;
-          raw.weatherName = raw.weatherName || legacy.name;
-          raw.weatherUnit = raw.weatherUnit || legacy.unit || 'c';
+        use12h = localStorage.getItem(STORAGE_KEY) === '1';
+      } catch (_) { /* localStorage may be blocked (private mode) */ }
+
+      const pad2 = (n) => (n < 10 ? '0' + n : String(n));
+
+      function formatTime(d) {
+        let h = d.getHours();
+        const m = pad2(d.getMinutes());
+        const s = pad2(d.getSeconds());
+        let meridiem = '';
+
+        if (use12h) {
+          meridiem = h >= 12 ? 'PM' : 'AM';
+          h = h % 12 || 12; // 0 -> 12
         }
-      } catch {}
-      settings = { ...DEFAULTS, ...raw };
-    }
-  } catch {}
-}
 
-function saveSettings() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
-}
+        const hh = use12h ? String(h) : pad2(h);
 
-/* ============================================================
-   APPLY SETTINGS TO DOM
-   ============================================================ */
-function applyTheme(themeKey) {
-  const t = THEMES[themeKey] || THEMES.midnight;
-  const root = document.documentElement;
-  root.style.setProperty('--bg', t.bg);
-  root.style.setProperty('--bg-2', t.bg2);
-  root.style.setProperty('--glow-1', t.glow1);
-  root.style.setProperty('--glow-2', t.glow2);
-  root.style.setProperty('--text', t.text);
-  root.style.setProperty('--text-2', t.text2);
-  root.style.setProperty('--muted', t.muted);
-  root.style.setProperty('--dim', t.dim);
-  root.style.setProperty('--accent', t.accent);
-}
+        // Seconds and AM/PM wrapped in spans for styling
+        return (
+          hh + ':' + m +
+          '<span class="seconds">:' + s + '</span>' +
+          (meridiem ? '<span class="meridiem">' + meridiem + '</span>' : '')
+        );
+      }
 
-function applySettings() {
-  applyTheme(settings.theme);
+      const DATE_FMT = new Intl.DateTimeFormat(undefined, {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric'
+      });
 
-  const root = document.documentElement;
-  root.style.setProperty('--clock-size', settings.size / 100);
-  root.style.setProperty('--clock-weight', settings.weight);
-  root.style.setProperty('--clock-spacing', settings.spacing / 100 + 'em');
+      let lastSecond = -1;
 
-  // Toggles
-  el.secondsWrap.classList.toggle('hidden', !settings.showSeconds);
-  el.colon.classList.toggle('no-blink', !settings.blink);
-  el.meridiem.classList.toggle('hidden', !settings.showMeridiem);
-  el.date.classList.toggle('hidden', !settings.showDate);
-  el.label.classList.toggle('hidden', !settings.showGreeting);
-  el.divider.classList.toggle('hidden', !settings.showDivider);
-  el.weatherLine.classList.toggle('hidden', !settings.showWeather);
+      function render() {
+        const now = new Date();
 
-  // Force a fresh tick to update formatting
-  lastSecond = -1;
-  lastMinuteKey = '';
-  tick();
-}
-
-/* ============================================================
-   ELEMENT REFS
-   ============================================================ */
-const el = {
-  timeMain: document.getElementById('timeMain'),
-  timeSeconds: document.getElementById('timeSeconds'),
-  secondsDot: document.getElementById('secondsDot'),
-  secondsWrap: document.getElementById('secondsWrap'),
-  colon: document.getElementById('colon'),
-  meridiem: document.getElementById('meridiem'),
-  date: document.getElementById('date'),
-  divider: document.getElementById('divider'),
-  label: document.getElementById('label'),
-  eyebrow: document.getElementById('eyebrow'),
-  weatherLine: document.getElementById('weatherLine')
-};
-
-/* ============================================================
-   WMO
-   ============================================================ */
-const WMO = {
-  0:{d:'Clear',i:'☀️'}, 1:{d:'Mainly clear',i:'🌤️'}, 2:{d:'Partly cloudy',i:'⛅'}, 3:{d:'Overcast',i:'☁️'},
-  45:{d:'Fog',i:'🌫️'}, 48:{d:'Rime fog',i:'🌫️'},
-  51:{d:'Light drizzle',i:'🌦️'}, 53:{d:'Drizzle',i:'🌦️'}, 55:{d:'Heavy drizzle',i:'🌧️'},
-  56:{d:'Freezing drizzle',i:'🌧️'}, 57:{d:'Freezing drizzle',i:'🌧️'},
-  61:{d:'Light rain',i:'🌦️'}, 63:{d:'Rain',i:'🌧️'}, 65:{d:'Heavy rain',i:'🌧️'},
-  66:{d:'Freezing rain',i:'🌧️'}, 67:{d:'Freezing rain',i:'🌧️'},
-  71:{d:'Light snow',i:'🌨️'}, 73:{d:'Snow',i:'❄️'}, 75:{d:'Heavy snow',i:'❄️'}, 77:{d:'Snow grains',i:'🌨️'},
-  80:{d:'Light showers',i:'🌦️'}, 81:{d:'Showers',i:'🌧️'}, 82:{d:'Heavy showers',i:'⛈️'},
-  85:{d:'Snow showers',i:'🌨️'}, 86:{d:'Heavy snow',i:'❄️'},
-  95:{d:'Thunderstorm',i:'⛈️'}, 96:{d:'Thunderstorm',i:'⛈️'}, 99:{d:'Thunderstorm',i:'⛈️'}
-};
-function wmoInfo(c) { return WMO[c] || { d: 'Unknown', i: '🌡️' }; }
-
-/* ============================================================
-   CLOCK
-   ============================================================ */
-let lastSecond = -1;
-let lastMinuteKey = '';
-function pad(n) { return String(n).padStart(2, '0'); }
-function formatDate(d) {
-  const w = d.toLocaleDateString('en-US', { weekday: 'long' });
-  const m = d.toLocaleDateString('en-US', { month: 'long' });
-  return `${w} · ${m} ${d.getDate()} · ${d.getFullYear()}`;
-}
-function greetingForHour(h) {
-  if (h >= 5 && h < 12) return 'Good Morning';
-  if (h >= 12 && h < 17) return 'Good Afternoon';
-  if (h >= 17 && h < 21) return 'Good Evening';
-  return 'Good Night';
-}
-
-function tick() {
-  const now = new Date();
-  const h24 = now.getHours();
-  const m = now.getMinutes();
-  const s = now.getSeconds();
-
-  if (s !== lastSecond) {
-    if (settings.format === 24) {
-      el.timeMain.textContent = `${pad(h24)}:${pad(m)}`;
-    } else {
-      const h12 = h24 % 12 || 12;
-      el.timeMain.textContent = `${pad(h12)}:${pad(m)}`;
-    }
-
-    if (settings.showSeconds) {
-      el.timeSeconds.textContent = pad(s);
-    }
-
-    if (settings.showMeridiem && settings.format === 12) {
-      el.meridiem.textContent = h24 >= 12 ? 'PM' : 'AM';
-    } else if (settings.format === 24) {
-      el.meridiem.textContent = '';
-    }
-
-    el.secondsDot.style.opacity = (s % 2 === 0) ? '0.9' : '0.35';
-    lastSecond = s;
-  }
-
-  const minuteKey = `${now.getFullYear()}-${now.getMonth()}-${now.getDate()}-${h24}-${m}`;
-  if (minuteKey !== lastMinuteKey) {
-    el.date.textContent = formatDate(now);
-    el.label.textContent = greetingForHour(h24);
-    lastMinuteKey = minuteKey;
-  }
-}
-
-/* ============================================================
-   TOAST
-   ============================================================ */
-let toastTimer;
-function toast(msg, duration = 1600) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.classList.add('show');
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => t.classList.remove('show'), duration);
-}
-
-/* ============================================================
-   WEATHER
-   ============================================================ */
-const weatherState = {
-  data: null,
-  lastFetch: 0
-};
-
-function renderWeatherLine() {
-  const line = el.weatherLine;
-  line.classList.remove('error', 'loading');
-
-  if (!settings.showWeather) return;
-
-  if (!weatherState.data) {
-    line.classList.add('loading');
-    line.innerHTML = `<span class="w-icon">☁️</span><span class="w-temp">—</span><span class="w-sep"></span><span class="w-cond">Loading</span>`;
-    return;
-  }
-
-  const d = weatherState.data.current;
-  const info = wmoInfo(d.weather_code);
-  const rawTemp = Math.round(d.temperature_2m);
-  const temp = settings.weatherUnit === 'f' ? Math.round(rawTemp * 9 / 5 + 32) : rawTemp;
-
-  line.innerHTML = `
-    <span class="w-icon">${info.i}</span>
-    <span class="w-temp">${temp}°</span>
-    <span class="w-sep"></span>
-    <span class="w-cond">${info.d}</span>
-  `;
-}
-
-function renderWeatherError() {
-  const line = el.weatherLine;
-  line.classList.remove('loading');
-  line.classList.add('error');
-  line.innerHTML = `Weather unavailable <span class="w-retry">Tap to set</span>`;
-}
-
-function persistWeather() {
-  // Saved as part of the main settings key now
-  saveSettings();
-}
-
-async function fetchWeatherForCoords(lat, lon, name) {
-  settings.weatherLat = lat;
-  settings.weatherLon = lon;
-  settings.weatherName = name;
-  saveSettings();
-
-  el.weatherLine.classList.add('loading');
-  el.weatherLine.classList.remove('error');
-  try {
-    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}`
-      + `&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m`
-      + `&temperature_unit=celsius&wind_speed_unit=kmh&timezone=auto`;
-    const res = await fetch(url);
-    if (!res.ok) throw new Error();
-    const data = await res.json();
-    weatherState.data = data;
-    weatherState.lastFetch = Date.now();
-    renderWeatherLine();
-  } catch {
-    renderWeatherError();
-  }
-}
-
-function requestLocation() {
-  if (!navigator.geolocation) { renderWeatherError(); return; }
-  el.weatherLine.classList.add('loading');
-  el.weatherLine.classList.remove('error');
-  el.weatherLine.innerHTML = `<span class="w-icon">📍</span><span class="w-cond">Locating…</span>`;
-
-  navigator.geolocation.getCurrentPosition(
-    async (pos) => {
-      const lat = pos.coords.latitude;
-      const lon = pos.coords.longitude;
-      let name = 'Your Location';
-      try {
-        const r = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&zoom=10&addressdetails=1`,
-          { headers: { 'Accept': 'application/json' } });
-        if (r.ok) {
-          const j = await r.json();
-          const a = j.address || {};
-          const city = a.city || a.town || a.village || a.suburb || a.county;
-          if (city) name = a.country ? `${city}, ${a.country}` : city;
+        // Only touch the DOM when the second actually changes.
+        // setInterval can fire slightly early/late; this keeps it idempotent.
+        if (now.getSeconds() !== lastSecond) {
+          lastSecond = now.getSeconds();
+          clockEl.innerHTML = formatTime(now);
+          dateEl.textContent = DATE_FMT.format(now);
         }
-      } catch {}
-      fetchWeatherForCoords(lat, lon, name);
-    },
-    (err) => {
-      renderWeatherError();
-      if (err.code === 1) toast('Location permission denied');
-      else toast('Could not get location');
-    },
-    { enableHighAccuracy: false, timeout: 12000, maximumAge: 10 * 60 * 1000 }
-  );
-}
 
-function initWeather() {
-  if (settings.weatherLat && settings.weatherLon) {
-    fetchWeatherForCoords(settings.weatherLat, settings.weatherLon, settings.weatherName || 'Your Location');
-  } else {
-    requestLocation();
-  }
-}
+        // Align the next tick to the next wall-clock second boundary
+        // so the displayed second changes exactly when it should.
+        const msToNextSecond = 1000 - (Date.now() % 1000);
+        setTimeout(render, msToNextSecond);
+      }
 
-/* ============================================================
-   CITY SEARCH SHEET (kept from before, simple)
-   ============================================================ */
-function openCitySearchSheet() {
-  const s = document.getElementById('settingsSheet');
-  s.innerHTML = `
-    <div class="sheet-handle"></div>
-    <div class="sheet-title">Set Location</div>
-    <div class="sheet-sub">Type any city in the world</div>
-    <div style="display:flex;gap:8px;margin-bottom:16px;">
-      <input type="text" id="cityInput" placeholder="City name…" autocomplete="off" autocapitalize="words" spellcheck="false"
-        style="flex:1;padding:14px 16px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:12px;color:var(--text);font-family:inherit;font-size:16px;font-weight:600;outline:none;-webkit-appearance:none;appearance:none;" />
-      <button id="cityGo" style="padding:14px 18px;background:rgba(255,191,36,0.1);border:1px solid rgba(255,191,36,0.3);border-radius:12px;color:var(--accent);font-family:inherit;font-size:0.78rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;cursor:pointer;">Go</button>
-    </div>
-    <button class="reset-btn" id="cancelCity">Cancel</button>
-  `;
+      // Toggle 12h/24h on tap or click
+      function toggleFormat() {
+        use12h = !use12h;
+        try { localStorage.setItem(STORAGE_KEY, use12h ? '1' : '0'); } catch (_) {}
+        lastSecond = -1; // force immediate re-render
+        render();
+      }
 
-  const input = document.getElementById('cityInput');
-  setTimeout(() => input.focus(), 200);
+      document.body.addEventListener('click', toggleFormat);
 
-  const go = async () => {
-    const q = input.value.trim();
-    if (!q) return;
-    try {
-      const res = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=1&language=en&format=json`);
-      const data = await res.json();
-      if (!data.results || !data.results.length) { toast('City not found'); return; }
-      const p = data.results[0];
-      const name = [p.name, p.admin1, p.country].filter(Boolean).join(', ');
-      closeSheet();
-      fetchWeatherForCoords(p.latitude, p.longitude, name);
-    } catch {
-      toast('Lookup failed');
-    }
-  };
+      // Re-render immediately when the tab becomes visible again,
+      // so a backgrounded clock isn't stale for up to a second.
+      document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) {
+          lastSecond = -1;
+          render();
+        }
+      });
 
-  document.getElementById('cityGo').onclick = go;
-  input.addEventListener('keydown', (e) => { if (e.key === 'Enter') go(); });
-  document.getElementById('cancelCity').onclick = () => { closeSheet(); setTimeout(openSettingsSheet, 100); };
-}
-
-/* ============================================================
-   SETTINGS SHEET
-   ============================================================ */
-function buildSettingsSheet() {
-  const sheet = document.getElementById('settingsSheet');
-
-  // Theme swatches
-  const themeGrid = document.getElementById('themeGrid');
-  themeGrid.innerHTML = '';
-  Object.entries(THEMES).forEach(([key, t]) => {
-    const swatch = document.createElement('button');
-    swatch.className = 'theme-swatch' + (settings.theme === key ? ' active' : '');
-    swatch.dataset.theme = key;
-    swatch.innerHTML = `
-      <div style="position:absolute;inset:0;background:linear-gradient(160deg, ${t.bg2} 0%, ${t.bg} 100%);"></div>
-      <div class="swatch-time" style="color:${t.text};">12:34</div>
-      <div class="swatch-dot" style="background:${t.accent};"></div>
-    `;
-    swatch.addEventListener('click', () => {
-      settings.theme = key;
-      saveSettings();
-      applyTheme(key);
-      themeGrid.querySelectorAll('.theme-swatch').forEach(el => el.classList.toggle('active', el.dataset.theme === key));
-    });
-    themeGrid.appendChild(swatch);
-  });
-
-  // Format segmented
-  const formatSeg = document.getElementById('formatSeg');
-  formatSeg.querySelectorAll('button').forEach(b => {
-    b.classList.toggle('active', parseInt(b.dataset.value) === settings.format);
-    b.onclick = () => {
-      settings.format = parseInt(b.dataset.value);
-      saveSettings();
-      formatSeg.querySelectorAll('button').forEach(x => x.classList.toggle('active', x === b));
-      lastSecond = -1;
-      tick();
-    };
-  });
-
-  // Size slider
-  const sizeSlider = document.getElementById('sizeSlider');
-  const sizeValue = document.getElementById('sizeValue');
-  sizeSlider.value = settings.size;
-  sizeValue.textContent = settings.size + '%';
-  sizeSlider.oninput = () => {
-    settings.size = parseInt(sizeSlider.value);
-    sizeValue.textContent = settings.size + '%';
-    document.documentElement.style.setProperty('--clock-size', settings.size / 100);
-  };
-  sizeSlider.onchange = () => saveSettings();
-
-  // Weight segmented
-  const weightSeg = document.getElementById('weightSeg');
-  weightSeg.querySelectorAll('button').forEach(b => {
-    b.classList.toggle('active', parseInt(b.dataset.value) === settings.weight);
-    b.onclick = () => {
-      settings.weight = parseInt(b.dataset.value);
-      saveSettings();
-      weightSeg.querySelectorAll('button').forEach(x => x.classList.toggle('active', x === b));
-      document.documentElement.style.setProperty('--clock-weight', settings.weight);
-    };
-  });
-
-  // Spacing slider
-  const spacingSlider = document.getElementById('spacingSlider');
-  const spacingValue = document.getElementById('spacingValue');
-  spacingSlider.value = settings.spacing;
-  spacingValue.textContent = spacingLabel(settings.spacing);
-  spacingSlider.oninput = () => {
-    settings.spacing = parseInt(spacingSlider.value);
-    spacingValue.textContent = spacingLabel(settings.spacing);
-    document.documentElement.style.setProperty('--clock-spacing', settings.spacing / 100 + 'em');
-  };
-  spacingSlider.onchange = () => saveSettings();
-
-  // Toggles
-  const toggles = [
-    ['toggleSeconds', 'showSeconds'],
-    ['toggleBlink', 'blink'],
-    ['toggleMeridiem', 'showMeridiem'],
-    ['toggleDate', 'showDate'],
-    ['toggleGreeting', 'showGreeting'],
-    ['toggleDivider', 'showDivider'],
-    ['toggleWeather', 'showWeather']
-  ];
-  toggles.forEach(([id, key]) => {
-    const btn = document.getElementById(id);
-    btn.classList.toggle('on', !!settings[key]);
-    btn.onclick = () => {
-      settings[key] = !settings[key];
-      saveSettings();
-      btn.classList.toggle('on', !!settings[key]);
-      applySettings();
-    };
-  });
-
-  // Reset
-  document.getElementById('resetBtn').onclick = () => {
-    if (!confirm('Reset all customization to defaults?')) return;
-    // Preserve weather location
-    const { weatherLat, weatherLon, weatherName, weatherUnit } = settings;
-    settings = { ...DEFAULTS, weatherLat, weatherLon, weatherName, weatherUnit };
-    saveSettings();
-    applySettings();
-    buildSettingsSheet();
-    toast('Reset to defaults');
-  };
-}
-
-function spacingLabel(v) {
-  if (v <= -5) return 'Very tight';
-  if (v <= -2) return 'Tight';
-  if (v <= 1) return 'Normal';
-  if (v <= 2) return 'Loose';
-  return 'Very loose';
-}
-
-/* ============================================================
-   SHEET OPEN / CLOSE
-   ============================================================ */
-function openSettingsSheet() {
-  // Rebuild the sheet with the settings UI
-  const sheet = document.getElementById('settingsSheet');
-  sheet.innerHTML = `
-    <div class="sheet-handle"></div>
-    <div class="sheet-title">Customize</div>
-    <div class="sheet-sub">Personalize your clock</div>
-
-    <div class="settings-group">
-      <div class="settings-label">Theme</div>
-      <div class="theme-grid" id="themeGrid"></div>
-    </div>
-
-    <div class="settings-group">
-      <div class="settings-label">Time Format</div>
-      <div class="segmented" id="formatSeg">
-        <button data-value="12">12-hour</button>
-        <button data-value="24">24-hour</button>
-      </div>
-    </div>
-
-    <div class="settings-group">
-      <div class="slider-wrap">
-        <div class="slider-header">
-          <div class="slider-label">Size</div>
-          <div class="slider-value" id="sizeValue">100%</div>
-        </div>
-        <input type="range" class="slider" id="sizeSlider" min="70" max="140" step="5" value="100" />
-      </div>
-    </div>
-
-    <div class="settings-group">
-      <div class="settings-label">Weight</div>
-      <div class="segmented" id="weightSeg">
-        <button data-value="300">Light</button>
-        <button data-value="500">Regular</button>
-        <button data-value="700">Bold</button>
-        <button data-value="900">Heavy</button>
-      </div>
-    </div>
-
-    <div class="settings-group">
-      <div class="slider-wrap">
-        <div class="slider-header">
-          <div class="slider-label">Letter Spacing</div>
-          <div class="slider-value" id="spacingValue">Tight</div>
-        </div>
-        <input type="range" class="slider" id="spacingSlider" min="-6" max="4" step="1" value="-4" />
-      </div>
-    </div>
-
-    <div class="settings-group">
-      <div class="settings-label">Display</div>
-      <div class="toggle-row">
-        <div class="toggle-label">Seconds</div>
-        <button class="toggle-switch" id="toggleSeconds"></button>
-      </div>
-      <div class="toggle-row">
-        <div class="toggle-label">Blinking colon</div>
-        <button class="toggle-switch" id="toggleBlink"></button>
-      </div>
-      <div class="toggle-row">
-        <div class="toggle-label">AM / PM</div>
-        <button class="toggle-switch" id="toggleMeridiem"></button>
-      </div>
-      <div class="toggle-row">
-        <div class="toggle-label">Date</div>
-        <button class="toggle-switch" id="toggleDate"></button>
-      </div>
-      <div class="toggle-row">
-        <div class="toggle-label">Greeting</div>
-        <button class="toggle-switch" id="toggleGreeting"></button>
-      </div>
-      <div class="toggle-row">
-        <div class="toggle-label">Divider</div>
-        <button class="toggle-switch" id="toggleDivider"></button>
-      </div>
-      <div class="toggle-row">
-        <div class="toggle-label">Weather</div>
-        <button class="toggle-switch" id="toggleWeather"></button>
-      </div>
-    </div>
-
-    <div class="settings-group">
-      <div class="settings-label">Weather Location</div>
-      <button class="reset-btn" id="changeLocationBtn" style="margin-top:0;">Change city</button>
-    </div>
-
-    <button class="reset-btn" id="resetBtn">Reset to defaults</button>
-  `;
-
-  buildSettingsSheet();
-
-  document.getElementById('changeLocationBtn').onclick = () => openCitySearchSheet();
-
-  document.getElementById('sheetBackdrop').classList.add('show');
-  sheet.classList.add('show');
-}
-
-function closeSheet() {
-  document.getElementById('sheetBackdrop').classList.remove('show');
-  document.getElementById('settingsSheet').classList.remove('show');
-}
-
-/* ============================================================
-   EVENTS
-   ============================================================ */
-document.getElementById('settingsBtn').onclick = openSettingsSheet;
-document.getElementById('sheetBackdrop').onclick = closeSheet;
-document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') closeSheet();
-});
-
-el.weatherLine.addEventListener('click', () => {
-  if (!settings.showWeather) return;
-  openSettingsSheet();
-  setTimeout(() => {
-    const locGroup = document.getElementById('changeLocationBtn');
-    if (locGroup) locGroup.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  }, 350);
-});
-
-/* ============================================================
-   BOOT
-   ============================================================ */
-loadSettings();
-applySettings();
-
-tick();
-setTimeout(() => {
-  tick();
-  setInterval(tick, 1000);
-}, 1000 - (Date.now() % 1000));
-
-document.addEventListener('visibilitychange', () => {
-  if (!document.hidden) {
-    tick();
-    if (settings.weatherLat && Date.now() - weatherState.lastFetch > 15 * 60 * 1000) {
-      fetchWeatherForCoords(settings.weatherLat, settings.weatherLon, settings.weatherName);
-    }
-  }
-});
-
-initWeather();
-</script>
-
+      render();
+    })();
+  </script>
 </body>
 </html>
